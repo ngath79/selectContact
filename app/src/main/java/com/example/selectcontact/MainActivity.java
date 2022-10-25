@@ -1,31 +1,22 @@
 package com.example.selectcontact;
 
-import static android.widget.Magnifier.*;
-
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.Magnifier;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
-import android.provider.ContactsContract;
-import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -77,9 +68,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void pickContactIntent() {
         Intent intent = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
-        startActivityForResult(intent, CONTACT_PICK_CODE);
+        startActivityForResult(intent,CONTACT_PICK_CODE);
     }
 
+    @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
@@ -87,21 +79,54 @@ public class MainActivity extends AppCompatActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 pickContactIntent();
             } else {
-                Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Permission denied...", Toast.LENGTH_SHORT).show();
             }
         }
     }
 
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+    @SuppressLint("Range")
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
         if(resultCode == RESULT_OK) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                pickContactIntent();
-            } else {
-                Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
+            if(resultCode == CONTACT_PICK_CODE) {
+                contactTv.setText("");
+                Cursor cursor1, cursor2;
+                Uri uri = data.getData();
+                cursor1 = getContentResolver().query(uri,null,null,null,null);
+                if(cursor1.moveToFirst()) {
+                    String contactId;
+                    contactId = cursor1.getString(cursor1.getColumnIndex(ContactsContract.Contacts._ID));
+                    String contactName;
+                    contactName = cursor1.getString(cursor1.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+                    String contactThumnail;
+                    contactThumnail = cursor1.getString(cursor1.getColumnIndex(ContactsContract.Contacts.PHOTO_THUMBNAIL_URI));
+                    String idResults;
+                    idResults = cursor1.getString(cursor1.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER));
+                    int idResultHold = Integer.parseInt(idResults);
+
+                    if(idResultHold == 1) {
+                        cursor2 = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
+                                ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=" + contactId, null, null);
+
+                        while (cursor2.moveToNext()) {
+                            String contactNumber = cursor2.getString(cursor2.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+
+                            contactTv.append(("\nPhone" + contactNumber));
+
+
+                            if (contactThumnail != null) {
+                                thumbnailIv.setImageURI(uri.parse(contactThumnail));
+                            }
+                            else {
+                                thumbnailIv.setImageResource(R.drawable.ic_baseline_person_24);
+                            }
+                        }
+                        cursor2.close();
+                    }
+                    cursor1.close();
+                }
             }
         }
     }
-
 }
